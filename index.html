@@ -297,8 +297,8 @@
     .svg-card {
       min-width: 240px;
       min-height: 240px;
-      width: min(86%, 900px);
-      height: min(82%, 680px);
+      width: min(92%, 1100px);
+      height: min(88%, 760px);
       border: 1px dashed #3a4357;
       border-radius: var(--radius);
       background:
@@ -308,26 +308,31 @@
         linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.035) 75%);
       background-size: 28px 28px;
       background-position: 0 0, 0 14px, 14px -14px, -14px 0;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
       box-shadow: 0 24px 80px var(--shadow);
     }
 
     #svgHost {
       width: 100%;
       height: 100%;
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+      padding: 14px;
     }
 
     #svgHost svg {
+      display: block;
       max-width: 100%;
       max-height: 100%;
-      width: 100%;
-      height: 100%;
-      display: block;
+      width: auto;
+      height: auto;
       overflow: visible;
+      flex: 0 1 auto;
     }
 
     #svgHost svg .anim-hover {
@@ -927,6 +932,88 @@
     return doc;
   }
 
+  function parseSvgLength(value) {
+    if (value == null) return null;
+    const raw = String(value).trim();
+    if (!raw || raw.endsWith("%")) return null;
+
+    const match = raw.match(/^(-?\d*\.?\d+(?:e[-+]?\d+)?)(px|pt|pc|in|cm|mm)?$/i);
+    if (!match) return null;
+
+    const number = Number(match[1]);
+    if (!Number.isFinite(number) || number <= 0) return null;
+
+    const unit = (match[2] || "px").toLowerCase();
+    const pxPerUnit = {
+      px: 1,
+      pt: 96 / 72,
+      pc: 16,
+      in: 96,
+      cm: 96 / 2.54,
+      mm: 96 / 25.4
+    };
+
+    return number * (pxPerUnit[unit] || 1);
+  }
+
+  function getSvgCanvas(svg) {
+    const viewBox = svg.getAttribute("viewBox");
+    if (viewBox) {
+      const parts = viewBox.trim().split(/[\s,]+/).map(Number);
+      if (parts.length === 4 && parts.every(Number.isFinite) && parts[2] > 0 && parts[3] > 0) {
+        return {
+          x: parts[0],
+          y: parts[1],
+          width: parts[2],
+          height: parts[3],
+          source: "viewBox"
+        };
+      }
+    }
+
+    const width = parseSvgLength(svg.getAttribute("width"));
+    const height = parseSvgLength(svg.getAttribute("height"));
+
+    if (width && height) {
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      return {
+        x: 0,
+        y: 0,
+        width,
+        height,
+        source: "width/height"
+      };
+    }
+
+    return {
+      x: 0,
+      y: 0,
+      width: 300,
+      height: 150,
+      source: "fallback"
+    };
+  }
+
+  function applyNaturalSvgPreviewSize(svg) {
+    const canvas = getSvgCanvas(svg);
+    const width = Math.max(1, canvas.width);
+    const height = Math.max(1, canvas.height);
+
+    svg.setAttribute("preserveAspectRatio", svg.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+    svg.setAttribute("overflow", "visible");
+    svg.style.overflow = "visible";
+
+    // Keep the SVG's own canvas ratio and let CSS scale it down to fit the preview.
+    // This prevents cropping caused by forcing width:100%; height:100%.
+    svg.style.width = `${width}px`;
+    svg.style.height = `${height}px`;
+    svg.style.maxWidth = "100%";
+    svg.style.maxHeight = "100%";
+    svg.style.aspectRatio = `${width} / ${height}`;
+
+    return canvas;
+  }
+
   async function openFolder() {
     if (!window.showDirectoryPicker) {
       toast("Folder access is not supported in this browser. Use Chrome or Edge, or open one SVG manually.");
@@ -1111,13 +1198,14 @@
       throw new Error("The file does not contain an SVG root.");
     }
 
-    svg.removeAttribute("width");
-    svg.removeAttribute("height");
-    svg.setAttribute("preserveAspectRatio", svg.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+    const canvas = applyNaturalSvgPreviewSize(svg);
     svg.setAttribute("tabindex", "0");
 
     dom.svgHost.innerHTML = "";
     const imported = document.importNode(svg, true);
+    imported.dataset.canvasWidth = String(canvas.width);
+    imported.dataset.canvasHeight = String(canvas.height);
+    imported.dataset.canvasSource = canvas.source;
     dom.svgHost.appendChild(imported);
     state.svgRoot = imported;
 
@@ -1174,7 +1262,10 @@
       };
     });
 
-    dom.previewInfo.textContent = `${state.layers.length} editable elements`;
+    const canvasW = Number(state.svgRoot.dataset.canvasWidth || 0);
+    const canvasH = Number(state.svgRoot.dataset.canvasHeight || 0);
+    const source = state.svgRoot.dataset.canvasSource || "svg";
+    dom.previewInfo.textContent = `${state.layers.length} editable elements · ${Math.round(canvasW)}×${Math.round(canvasH)} canvas from ${source}`;
   }
 
   function getDepth(el, root) {
