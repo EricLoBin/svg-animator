@@ -53,6 +53,8 @@ function bindEvents() {
   dom.playBtn.addEventListener("click", timeline.play);
   dom.pauseBtn.addEventListener("click", timeline.stopPlayback);
   dom.fileFilter.addEventListener("input", ui.renderFileList);
+  dom.filesTabBtn.addEventListener("click", () => ui.switchLeftTab("files"));
+  dom.layersTabBtn.addEventListener("click", () => ui.switchLeftTab("layers"));
 
   [dom.xInput, dom.yInput, dom.rotationInput, dom.scaleInput, dom.pivotXInput, dom.pivotYInput]
     .forEach(input => input.addEventListener("input", svg.onInspectorInput));

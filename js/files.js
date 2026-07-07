@@ -22,8 +22,13 @@ export async function openFolder() {
     state.svgFiles.sort((a, b) => a.path.localeCompare(b.path));
     actions.renderFileList();
 
-    if (state.svgFiles.length) {
+    if (state.svgFiles.length === 1) {
       await loadSvgEntry(state.svgFiles[0]);
+    } else if (state.svgFiles.length > 1) {
+      clearProject();
+      actions.renderFileList();
+      actions.switchLeftTab("files");
+      actions.setStatus(`Found ${state.svgFiles.length} SVG files. Select one to begin.`);
     } else {
       clearProject();
       actions.toast("No SVG files found in that folder.");
@@ -153,6 +158,7 @@ export async function loadSvgEntry(entry) {
     state.currentFrame = actions.clampFrame(state.currentFrame);
     actions.renderFrame(state.currentFrame);
     actions.updateAllUi();
+    actions.switchLeftTab("layers");
     actions.markDirty(false);
 
     actions.setStatus(`Loaded ${entry.path}${entry.hasJson ? " with matching JSON." : "."}`);

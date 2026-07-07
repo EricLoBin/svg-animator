@@ -21,13 +21,29 @@ export function markDirty(value = true) {
   dom.dirtyBadge.className = "badge " + (value ? "warn" : "");
 }
 
+export function switchLeftTab(tab) {
+  const showLayers = tab === "layers";
+
+  dom.filesTabBtn.classList.toggle("active", !showLayers);
+  dom.layersTabBtn.classList.toggle("active", showLayers);
+  dom.filesTabPanel.classList.toggle("active", !showLayers);
+  dom.layersTabPanel.classList.toggle("active", showLayers);
+
+  updateLeftPanelBadge();
+}
+
+export function updateLeftPanelBadge() {
+  const showingLayers = dom.layersTabPanel.classList.contains("active");
+  dom.leftPanelBadge.textContent = String(showingLayers ? state.layers.length : state.svgFiles.length);
+}
+
 export function renderFileList() {
   const filter = dom.fileFilter.value.trim().toLowerCase();
   const files = state.svgFiles.filter(entry =>
     !filter || entry.path.toLowerCase().includes(filter)
   );
 
-  dom.fileCount.textContent = String(state.svgFiles.length);
+  updateLeftPanelBadge();
 
   if (!files.length) {
     dom.fileList.innerHTML = `<div class="empty-state">No SVG files match the filter.</div>`;
@@ -51,6 +67,8 @@ export function renderFileList() {
 }
 
 export function renderLayerList() {
+  updateLeftPanelBadge();
+
   if (!state.layers.length) {
     dom.layerList.innerHTML = `<div class="hint">No layers yet.</div>`;
     return;
