@@ -6,6 +6,10 @@ export function jsonNameForSvg(svgName) {
   return baseName(svgName) + ".json";
 }
 
+export function pngNameForSvg(svgName) {
+  return baseName(svgName) + ".png";
+}
+
 export function nowIso() {
   return new Date().toISOString();
 }

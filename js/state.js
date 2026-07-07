@@ -28,6 +28,7 @@ export const dom = {
   saveBtn: document.getElementById("saveBtn"),
   downloadBtn: document.getElementById("downloadBtn"),
   propertiesBtn: document.getElementById("propertiesBtn"),
+  exportSpritesheetBtn: document.getElementById("exportSpritesheetBtn"),
   playBtn: document.getElementById("playBtn"),
   pauseBtn: document.getElementById("pauseBtn"),
   status: document.getElementById("status"),

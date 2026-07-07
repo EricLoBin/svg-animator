@@ -1,6 +1,7 @@
 ﻿import { registerActions } from "./context.js";
 import { dom, state } from "./state.js";
 import * as files from "./files.js";
+import * as exporter from "./export.js";
 import * as project from "./project.js";
 import * as svg from "./svg.js";
 import * as timeline from "./timeline.js";
@@ -8,6 +9,7 @@ import * as ui from "./ui.js";
 
 registerActions({
   ...files,
+  ...exporter,
   ...project,
   ...svg,
   ...timeline,
@@ -47,6 +49,7 @@ function bindEvents() {
   dom.saveBtn.addEventListener("click", project.saveProject);
   dom.downloadBtn.addEventListener("click", project.downloadProject);
   dom.propertiesBtn.addEventListener("click", ui.openProperties);
+  dom.exportSpritesheetBtn.addEventListener("click", exporter.exportSpritesheet);
   dom.playBtn.addEventListener("click", timeline.play);
   dom.pauseBtn.addEventListener("click", timeline.stopPlayback);
   dom.fileFilter.addEventListener("input", ui.renderFileList);
@@ -66,8 +69,8 @@ function bindEvents() {
   dom.cancelPropertiesBtn.addEventListener("click", ui.closeProperties);
   dom.applyPropertiesBtn.addEventListener("click", ui.applyProperties);
   dom.exportTypeSelect.addEventListener("change", ui.updateExportTypeNote);
-  dom.exportWidthInput.addEventListener("input", ui.updateExportTypeNote);
-  dom.exportHeightInput.addEventListener("input", ui.updateExportTypeNote);
+  dom.exportWidthInput.addEventListener("input", ui.onExportWidthInput);
+  dom.exportHeightInput.addEventListener("input", ui.onExportHeightInput);
   dom.propertiesDialog.addEventListener("click", event => {
     if (event.target === dom.propertiesDialog) ui.closeProperties();
   });

@@ -132,10 +132,11 @@ export function syncPropertiesFormFromProject() {
   if (!state.activeProject) return;
 
   const exportSettings = normalizeExportSettings(state.activeProject.export);
+  const proportionalSize = getProportionalExportSize(exportSettings.width, "width");
   dom.propertiesFpsInput.value = String(state.activeProject.fps || 24);
   dom.propertiesDurationInput.value = String(state.activeProject.durationFrames || 120);
-  dom.exportWidthInput.value = String(exportSettings.width);
-  dom.exportHeightInput.value = String(exportSettings.height);
+  dom.exportWidthInput.value = String(proportionalSize.width);
+  dom.exportHeightInput.value = String(proportionalSize.height);
   dom.exportTypeSelect.value = exportSettings.type;
   updateExportTypeNote();
 }
@@ -145,10 +146,58 @@ export function updateExportTypeNote() {
   const height = Math.max(1, Math.round(Number(dom.exportHeightInput.value || 512)));
 
   if (dom.exportTypeSelect.value === "spritesheet") {
-    dom.exportTypeNote.textContent = `Spritesheet export will use ${width}x${height}px cells, so every sprite frame has the same size.`;
+    dom.exportTypeNote.textContent = `Spritesheet export will use ${width}x${height}px cells, matching the SVG aspect ratio.`;
   } else {
-    dom.exportTypeNote.textContent = `APNG export will render frames at ${width}x${height}px.`;
+    dom.exportTypeNote.textContent = `APNG export will render frames at ${width}x${height}px, matching the SVG aspect ratio.`;
   }
+}
+
+export function onExportWidthInput() {
+  const size = getProportionalExportSize(dom.exportWidthInput.value, "width");
+  dom.exportWidthInput.value = String(size.width);
+  dom.exportHeightInput.value = String(size.height);
+  updateExportTypeNote();
+}
+
+export function onExportHeightInput() {
+  const size = getProportionalExportSize(dom.exportHeightInput.value, "height");
+  dom.exportWidthInput.value = String(size.width);
+  dom.exportHeightInput.value = String(size.height);
+  updateExportTypeNote();
+}
+
+export function getProportionalExportSize(value, changedDimension) {
+  const ratio = getSvgAspectRatio();
+  const dimension = clampExportDimension(value);
+
+  if (changedDimension === "height") {
+    return {
+      width: clampExportDimension(dimension * ratio),
+      height: dimension
+    };
+  }
+
+  return {
+    width: dimension,
+    height: clampExportDimension(dimension / ratio)
+  };
+}
+
+export function getSvgAspectRatio() {
+  const width = Number(state.svgRoot?.dataset.canvasWidth || 0);
+  const height = Number(state.svgRoot?.dataset.canvasHeight || 0);
+
+  if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+    return width / height;
+  }
+
+  return 1;
+}
+
+function clampExportDimension(value) {
+  const n = Math.round(Number(value || 1));
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(1, Math.min(16384, n));
 }
 
 export function applyProperties() {
@@ -156,9 +205,10 @@ export function applyProperties() {
 
   const fps = Math.max(1, Math.min(120, Math.round(Number(dom.propertiesFpsInput.value || 24))));
   const durationFrames = Math.max(1, Math.min(10000, Math.round(Number(dom.propertiesDurationInput.value || 120))));
+  const proportionalSize = getProportionalExportSize(dom.exportWidthInput.value, "width");
   const exportSettings = normalizeExportSettings({
-    width: dom.exportWidthInput.value,
-    height: dom.exportHeightInput.value,
+    width: proportionalSize.width,
+    height: proportionalSize.height,
     type: dom.exportTypeSelect.value
   });
 
@@ -184,6 +234,7 @@ export function updateAllUi() {
   dom.saveBtn.disabled = !hasProject || state.manualMode;
   dom.downloadBtn.disabled = !hasProject;
   dom.propertiesBtn.disabled = !hasProject;
+  dom.exportSpritesheetBtn.disabled = !hasProject;
   dom.playBtn.disabled = !hasProject;
   dom.pauseBtn.disabled = !hasProject;
 }
