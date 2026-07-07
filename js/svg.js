@@ -146,7 +146,7 @@ export function extractLayers() {
     }
 
     const depth = getDepth(el, state.svgRoot);
-    const title = el.id || el.getAttribute("inkscape:label") || el.getAttribute("aria-label") || el.tagName.toLowerCase();
+    const title = el.getAttribute("inkscape:label") || el.getAttribute("aria-label") || el.id || el.tagName.toLowerCase();
 
     return {
       id,
