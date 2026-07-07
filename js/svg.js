@@ -1,0 +1,399 @@
+﻿import { actions } from "./context.js";
+import { dom, EDITABLE_SELECTOR, state } from "./state.js";
+import { clone, escapeCss, normalizeTransform, parseSvgLength, safeElementId } from "./utils.js";
+
+export function sanitizeSvgDocument(doc) {
+  doc.querySelectorAll("script, foreignObject").forEach(el => el.remove());
+
+  const walker = doc.createTreeWalker(doc.documentElement, NodeFilter.SHOW_ELEMENT);
+  while (walker.nextNode()) {
+    const el = walker.currentNode;
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const value = String(attr.value || "").trim().toLowerCase();
+      if (name.startsWith("on")) el.removeAttribute(attr.name);
+      if ((name === "href" || name.endsWith(":href")) && value.startsWith("javascript:")) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  }
+
+  return doc;
+}
+
+export function getSvgCanvas(svg) {
+  const viewBox = svg.getAttribute("viewBox");
+  if (viewBox) {
+    const parts = viewBox.trim().split(/[\s,]+/).map(Number);
+    if (parts.length === 4 && parts.every(Number.isFinite) && parts[2] > 0 && parts[3] > 0) {
+      return {
+        x: parts[0],
+        y: parts[1],
+        width: parts[2],
+        height: parts[3],
+        source: "viewBox"
+      };
+    }
+  }
+
+  const width = parseSvgLength(svg.getAttribute("width"));
+  const height = parseSvgLength(svg.getAttribute("height"));
+
+  if (width && height) {
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    return {
+      x: 0,
+      y: 0,
+      width,
+      height,
+      source: "width/height"
+    };
+  }
+
+  return {
+    x: 0,
+    y: 0,
+    width: 300,
+    height: 150,
+    source: "fallback"
+  };
+}
+
+export function applyNaturalSvgPreviewSize(svg) {
+  const canvas = getSvgCanvas(svg);
+  const width = Math.max(1, canvas.width);
+  const height = Math.max(1, canvas.height);
+
+  svg.setAttribute("preserveAspectRatio", svg.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+  svg.setAttribute("overflow", "visible");
+  svg.style.overflow = "visible";
+
+  // Keep the SVG's own canvas ratio and let CSS scale it down to fit the preview.
+  // This prevents cropping caused by forcing width:100%; height:100%.
+  svg.style.width = `${width}px`;
+  svg.style.height = `${height}px`;
+  svg.style.maxWidth = "100%";
+  svg.style.maxHeight = "100%";
+  svg.style.aspectRatio = `${width} / ${height}`;
+
+  return canvas;
+}
+
+export function loadSvgIntoPreview(svgText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgText, "image/svg+xml");
+
+  const errorNode = doc.querySelector("parsererror");
+  if (errorNode) throw new Error("Invalid SVG file.");
+
+  sanitizeSvgDocument(doc);
+
+  const svg = doc.documentElement;
+  if (!svg || svg.nodeName.toLowerCase() !== "svg") {
+    throw new Error("The file does not contain an SVG root.");
+  }
+
+  const canvas = applyNaturalSvgPreviewSize(svg);
+  svg.setAttribute("tabindex", "0");
+
+  dom.svgHost.innerHTML = "";
+  const imported = document.importNode(svg, true);
+  imported.dataset.canvasWidth = String(canvas.width);
+  imported.dataset.canvasHeight = String(canvas.height);
+  imported.dataset.canvasSource = canvas.source;
+  dom.svgHost.appendChild(imported);
+  state.svgRoot = imported;
+
+  state.svgRoot.addEventListener("click", onSvgClick);
+  state.svgRoot.addEventListener("pointerdown", onSvgPointerDown);
+  window.addEventListener("pointermove", onSvgPointerMove);
+  window.addEventListener("pointerup", onSvgPointerUp);
+}
+
+export function extractLayers() {
+  if (!state.svgRoot) return;
+
+  const elements = Array.from(state.svgRoot.querySelectorAll(EDITABLE_SELECTOR))
+    .filter(el => !el.closest("[data-anim-ui='true']"));
+
+  const used = new Set();
+  let count = 1;
+
+  state.layers = elements.map(el => {
+    let id = el.id || el.getAttribute("data-anim-id");
+    if (!id) {
+      do {
+        id = `auto_layer_${String(count++).padStart(3, "0")}`;
+      } while (used.has(id) || state.svgRoot.getElementById?.(id));
+      el.id = id;
+    }
+    id = safeElementId(id, `layer_${count++}`);
+
+    if (used.has(id)) {
+      let suffix = 2;
+      const base = id;
+      while (used.has(`${base}_${suffix}`)) suffix++;
+      id = `${base}_${suffix}`;
+      el.id = id;
+    }
+
+    used.add(id);
+    el.setAttribute("data-anim-id", id);
+    el.setAttribute("data-anim-editable", "true");
+
+    if (!el.hasAttribute("data-base-transform")) {
+      el.setAttribute("data-base-transform", el.getAttribute("transform") || "");
+    }
+
+    const depth = getDepth(el, state.svgRoot);
+    const title = el.id || el.getAttribute("inkscape:label") || el.getAttribute("aria-label") || el.tagName.toLowerCase();
+
+    return {
+      id,
+      name: title,
+      tag: el.tagName.toLowerCase(),
+      depth,
+      selector: `#${escapeCss(id)}`
+    };
+  });
+
+  const canvasW = Number(state.svgRoot.dataset.canvasWidth || 0);
+  const canvasH = Number(state.svgRoot.dataset.canvasHeight || 0);
+  const source = state.svgRoot.dataset.canvasSource || "svg";
+  dom.previewInfo.textContent = `${state.layers.length} editable elements · ${Math.round(canvasW)}×${Math.round(canvasH)} canvas from ${source}`;
+}
+
+export function getDepth(el, root) {
+  let depth = 0;
+  let cur = el.parentElement;
+  while (cur && cur !== root) {
+    depth++;
+    cur = cur.parentElement;
+  }
+  return depth;
+}
+
+export function syncLayerCatalogToProject() {
+  if (!state.activeProject) return;
+  state.activeProject.layers = state.layers.map(layer => ({
+    id: layer.id,
+    name: layer.name,
+    tag: layer.tag,
+    selector: layer.selector,
+    depth: layer.depth
+  }));
+
+  for (const layer of state.layers) {
+    if (!state.activeProject.elements[layer.id]) continue;
+    state.activeProject.elements[layer.id].name = state.activeProject.elements[layer.id].name || layer.name;
+    state.activeProject.elements[layer.id].selector = layer.selector;
+  }
+}
+
+export function getSvgElement(id) {
+  if (!state.svgRoot || !id) return null;
+  return state.svgRoot.querySelector(`#${escapeCss(id)}`);
+}
+
+export function setHover(id, on) {
+  const el = getSvgElement(id);
+  if (!el) return;
+  if (on) el.classList.add("anim-hover");
+  else el.classList.remove("anim-hover");
+}
+
+export function clearSelectedClass() {
+  if (!state.svgRoot) return;
+  state.svgRoot.querySelectorAll(".anim-selected").forEach(el => el.classList.remove("anim-selected"));
+}
+
+export function selectElement(id) {
+  if (!id || !getSvgElement(id)) return;
+
+  clearSelectedClass();
+  state.selectedElementId = id;
+  const el = getSvgElement(id);
+  el.classList.add("anim-selected");
+
+  const current = state.currentTransforms[id] || defaultTransformForElement(id);
+  state.currentTransforms[id] = normalizeTransform(current);
+
+  actions.updateInspector();
+  actions.renderLayerList();
+  actions.renderTimeline();
+}
+
+export function defaultTransformForElement(id) {
+  const bbox = getElementBBox(id);
+  return {
+    x: 0,
+    y: 0,
+    rotation: 0,
+    scale: 1,
+    pivotX: bbox ? bbox.x + bbox.width / 2 : 0,
+    pivotY: bbox ? bbox.y + bbox.height / 2 : 0
+  };
+}
+
+export function getElementBBox(id) {
+  const el = getSvgElement(id);
+  if (!el || !el.getBBox) return null;
+  try {
+    return el.getBBox();
+  } catch (_err) {
+    return null;
+  }
+}
+
+export function onSvgClick(event) {
+  if (!state.svgRoot) return;
+
+  if (state.pickingPivot && state.selectedElementId) {
+    const point = screenToSvg(event.clientX, event.clientY);
+    const t = state.currentTransforms[state.selectedElementId] || defaultTransformForElement(state.selectedElementId);
+    t.pivotX = point.x;
+    t.pivotY = point.y;
+    state.currentTransforms[state.selectedElementId] = t;
+    applyTransformToElement(state.selectedElementId, t);
+    state.pickingPivot = false;
+    dom.svgHost.classList.remove("pivot-mode");
+    actions.updateInspector();
+    actions.markDirty(true);
+    actions.toast("Pivot set at clicked point.");
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
+  const target = event.target.closest?.("[data-anim-editable='true']");
+  if (target && state.svgRoot.contains(target)) {
+    selectElement(target.getAttribute("data-anim-id") || target.id);
+  }
+}
+
+export function onSvgPointerDown(event) {
+  if (!state.selectedElementId || state.pickingPivot) return;
+
+  const selectedEl = getSvgElement(state.selectedElementId);
+  if (!selectedEl) return;
+
+  const target = event.target.closest?.("[data-anim-editable='true']");
+  if (!target) return;
+
+  if (target !== selectedEl && !target.contains(selectedEl) && !selectedEl.contains(target)) {
+    return;
+  }
+
+  const startPoint = screenToSvg(event.clientX, event.clientY);
+  const startTransform = clone(state.currentTransforms[state.selectedElementId] || defaultTransformForElement(state.selectedElementId));
+
+  state.dragging = {
+    id: state.selectedElementId,
+    startPoint,
+    startTransform
+  };
+
+  selectedEl.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+export function onSvgPointerMove(event) {
+  if (!state.dragging) return;
+
+  const point = screenToSvg(event.clientX, event.clientY);
+  const dx = point.x - state.dragging.startPoint.x;
+  const dy = point.y - state.dragging.startPoint.y;
+  const t = clone(state.dragging.startTransform);
+
+  t.x += dx;
+  t.y += dy;
+
+  state.currentTransforms[state.dragging.id] = t;
+  applyTransformToElement(state.dragging.id, t);
+  actions.updateInspector();
+  actions.markDirty(true);
+}
+
+export function onSvgPointerUp() {
+  if (state.dragging) {
+    state.dragging = null;
+  }
+}
+
+export function screenToSvg(clientX, clientY) {
+  const svg = state.svgRoot;
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+export function readInspectorTransform() {
+  return normalizeTransform({
+    x: parseFloat(dom.xInput.value),
+    y: parseFloat(dom.yInput.value),
+    rotation: parseFloat(dom.rotationInput.value),
+    scale: parseFloat(dom.scaleInput.value),
+    pivotX: parseFloat(dom.pivotXInput.value),
+    pivotY: parseFloat(dom.pivotYInput.value)
+  });
+}
+
+export function onInspectorInput() {
+  if (!state.selectedElementId) return;
+  const t = readInspectorTransform();
+  state.currentTransforms[state.selectedElementId] = t;
+  applyTransformToElement(state.selectedElementId, t);
+  actions.updateInspector();
+  actions.markDirty(true);
+}
+
+export function applyTransformToElement(id, transform) {
+  const el = getSvgElement(id);
+  if (!el) return;
+
+  const t = normalizeTransform(transform);
+  const base = el.getAttribute("data-base-transform") || "";
+
+  const generated = [
+    `translate(${t.x} ${t.y})`,
+    `rotate(${t.rotation} ${t.pivotX} ${t.pivotY})`,
+    `scale(${t.scale})`
+  ].join(" ");
+
+  el.setAttribute("transform", [base, generated].filter(Boolean).join(" "));
+}
+
+export function centerPivot() {
+  if (!state.selectedElementId) return;
+  const bbox = getElementBBox(state.selectedElementId);
+  if (!bbox) {
+    actions.toast("Could not calculate the selected element bounds.");
+    return;
+  }
+
+  const t = state.currentTransforms[state.selectedElementId] || defaultTransformForElement(state.selectedElementId);
+  t.pivotX = bbox.x + bbox.width / 2;
+  t.pivotY = bbox.y + bbox.height / 2;
+  state.currentTransforms[state.selectedElementId] = t;
+  applyTransformToElement(state.selectedElementId, t);
+  actions.updateInspector();
+  actions.markDirty(true);
+}
+
+export function togglePickPivot() {
+  if (!state.selectedElementId) return;
+  state.pickingPivot = !state.pickingPivot;
+  dom.svgHost.classList.toggle("pivot-mode", state.pickingPivot);
+  dom.pickPivotBtn.textContent = state.pickingPivot ? "Cancel Pivot" : "Pick Pivot";
+  actions.toast(state.pickingPivot ? "Click in the preview to set the rotation center." : "Pivot picking cancelled.");
+}
+
+export function resetSelectedTransform() {
+  if (!state.selectedElementId) return;
+  const t = defaultTransformForElement(state.selectedElementId);
+  state.currentTransforms[state.selectedElementId] = t;
+  applyTransformToElement(state.selectedElementId, t);
+  actions.updateInspector();
+  actions.markDirty(true);
+}
