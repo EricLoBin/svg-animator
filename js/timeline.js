@@ -267,6 +267,7 @@ export function applyProjectSettingsToUi() {
   dom.durationInput.value = String(state.activeProject.durationFrames);
   dom.frameSlider.max = String(state.activeProject.durationFrames - 1);
   dom.frameInput.max = String(state.activeProject.durationFrames - 1);
+  actions.syncPropertiesFormFromProject();
 }
 
 export function onTimelineSettingsChange() {
@@ -276,6 +277,7 @@ export function onTimelineSettingsChange() {
   state.activeProject.durationFrames = Math.max(1, Math.round(Number(dom.durationInput.value || 120)));
   state.currentFrame = clampFrame(state.currentFrame);
 
+  actions.syncPropertiesFormFromProject();
   actions.markDirty(true);
   renderFrame(state.currentFrame);
 }

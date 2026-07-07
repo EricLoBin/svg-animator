@@ -544,6 +544,72 @@
       line-height: 1.35;
     }
 
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(5, 8, 13, .72);
+    }
+
+    .modal-backdrop[hidden] {
+      display: none;
+    }
+
+    .modal {
+      width: min(520px, 100%);
+      max-height: min(720px, 92vh);
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 24px 80px rgba(0,0,0,.52);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #0d1017;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .modal-body {
+      padding: 16px;
+    }
+
+    .properties-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .properties-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .properties-note {
+      margin-top: 12px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 14px 16px;
+      border-top: 1px solid var(--line);
+      background: #10141d;
+    }
+
     @media (max-width: 1050px) {
       .main,
       .timeline {

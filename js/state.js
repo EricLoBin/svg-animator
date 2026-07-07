@@ -27,6 +27,7 @@ export const dom = {
   jsonFileInput: document.getElementById("jsonFileInput"),
   saveBtn: document.getElementById("saveBtn"),
   downloadBtn: document.getElementById("downloadBtn"),
+  propertiesBtn: document.getElementById("propertiesBtn"),
   playBtn: document.getElementById("playBtn"),
   pauseBtn: document.getElementById("pauseBtn"),
   status: document.getElementById("status"),
@@ -60,5 +61,15 @@ export const dom = {
   timelineTicks: document.getElementById("timelineTicks"),
   keyframeList: document.getElementById("keyframeList"),
   prevKeyBtn: document.getElementById("prevKeyBtn"),
-  nextKeyBtn: document.getElementById("nextKeyBtn")
+  nextKeyBtn: document.getElementById("nextKeyBtn"),
+  propertiesDialog: document.getElementById("propertiesDialog"),
+  closePropertiesBtn: document.getElementById("closePropertiesBtn"),
+  cancelPropertiesBtn: document.getElementById("cancelPropertiesBtn"),
+  applyPropertiesBtn: document.getElementById("applyPropertiesBtn"),
+  propertiesFpsInput: document.getElementById("propertiesFpsInput"),
+  propertiesDurationInput: document.getElementById("propertiesDurationInput"),
+  exportWidthInput: document.getElementById("exportWidthInput"),
+  exportHeightInput: document.getElementById("exportHeightInput"),
+  exportTypeSelect: document.getElementById("exportTypeSelect"),
+  exportTypeNote: document.getElementById("exportTypeNote")
 };

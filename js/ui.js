@@ -1,5 +1,6 @@
 ﻿import { actions } from "./context.js";
 import { dom, state } from "./state.js";
+import { normalizeExportSettings } from "./project.js";
 import { escapeHtml, roundForInput } from "./utils.js";
 
 export function toast(message, ms = 2600) {
@@ -116,6 +117,63 @@ export function setInputValue(input, value) {
   input.value = roundForInput(value);
 }
 
+export function openProperties() {
+  if (!state.activeProject) return;
+  syncPropertiesFormFromProject();
+  dom.propertiesDialog.hidden = false;
+  dom.propertiesFpsInput.focus();
+}
+
+export function closeProperties() {
+  dom.propertiesDialog.hidden = true;
+}
+
+export function syncPropertiesFormFromProject() {
+  if (!state.activeProject) return;
+
+  const exportSettings = normalizeExportSettings(state.activeProject.export);
+  dom.propertiesFpsInput.value = String(state.activeProject.fps || 24);
+  dom.propertiesDurationInput.value = String(state.activeProject.durationFrames || 120);
+  dom.exportWidthInput.value = String(exportSettings.width);
+  dom.exportHeightInput.value = String(exportSettings.height);
+  dom.exportTypeSelect.value = exportSettings.type;
+  updateExportTypeNote();
+}
+
+export function updateExportTypeNote() {
+  const width = Math.max(1, Math.round(Number(dom.exportWidthInput.value || 512)));
+  const height = Math.max(1, Math.round(Number(dom.exportHeightInput.value || 512)));
+
+  if (dom.exportTypeSelect.value === "spritesheet") {
+    dom.exportTypeNote.textContent = `Spritesheet export will use ${width}x${height}px cells, so every sprite frame has the same size.`;
+  } else {
+    dom.exportTypeNote.textContent = `APNG export will render frames at ${width}x${height}px.`;
+  }
+}
+
+export function applyProperties() {
+  if (!state.activeProject) return;
+
+  const fps = Math.max(1, Math.min(120, Math.round(Number(dom.propertiesFpsInput.value || 24))));
+  const durationFrames = Math.max(1, Math.min(10000, Math.round(Number(dom.propertiesDurationInput.value || 120))));
+  const exportSettings = normalizeExportSettings({
+    width: dom.exportWidthInput.value,
+    height: dom.exportHeightInput.value,
+    type: dom.exportTypeSelect.value
+  });
+
+  state.activeProject.fps = fps;
+  state.activeProject.durationFrames = durationFrames;
+  state.activeProject.export = exportSettings;
+  state.currentFrame = actions.clampFrame(state.currentFrame);
+
+  actions.applyProjectSettingsToUi();
+  actions.markDirty(true);
+  actions.renderFrame(state.currentFrame);
+  closeProperties();
+  toast("Project properties updated.");
+}
+
 export function updateAllUi() {
   renderFileList();
   renderLayerList();
@@ -125,6 +183,7 @@ export function updateAllUi() {
   const hasProject = Boolean(state.activeProject);
   dom.saveBtn.disabled = !hasProject || state.manualMode;
   dom.downloadBtn.disabled = !hasProject;
+  dom.propertiesBtn.disabled = !hasProject;
   dom.playBtn.disabled = !hasProject;
   dom.pauseBtn.disabled = !hasProject;
 }

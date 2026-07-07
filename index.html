@@ -15,6 +15,7 @@
       <button id="openJsonBtn">Open JSON</button>
       <button id="saveBtn" class="good" disabled>Save JSON</button>
       <button id="downloadBtn" disabled>Download JSON</button>
+      <button id="propertiesBtn" disabled>Properties</button>
       <div class="spacer"></div>
       <button id="playBtn" disabled>Play</button>
       <button id="pauseBtn" disabled>Pause</button>
@@ -175,6 +176,50 @@
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <div id="propertiesDialog" class="modal-backdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="propertiesTitle">
+      <div class="modal-header">
+        <h2 id="propertiesTitle">Project Properties</h2>
+        <button id="closePropertiesBtn" class="ghost" type="button" aria-label="Close properties">Close</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="properties-grid">
+          <div>
+            <label for="propertiesFpsInput">FPS</label>
+            <input id="propertiesFpsInput" type="number" min="1" max="120" step="1" value="24" />
+          </div>
+          <div>
+            <label for="propertiesDurationInput">Duration Frames</label>
+            <input id="propertiesDurationInput" type="number" min="1" max="10000" step="1" value="120" />
+          </div>
+          <div>
+            <label for="exportWidthInput">Export Width</label>
+            <input id="exportWidthInput" type="number" min="1" max="16384" step="1" value="512" />
+          </div>
+          <div>
+            <label for="exportHeightInput">Export Height</label>
+            <input id="exportHeightInput" type="number" min="1" max="16384" step="1" value="512" />
+          </div>
+          <div class="full">
+            <label for="exportTypeSelect">Export Type</label>
+            <select id="exportTypeSelect">
+              <option value="apng">APNG</option>
+              <option value="spritesheet">PNG spritesheet</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="exportTypeNote" class="hint properties-note"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="cancelPropertiesBtn" type="button">Cancel</button>
+        <button id="applyPropertiesBtn" class="primary" type="button">Apply</button>
+      </div>
+    </section>
+  </div>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

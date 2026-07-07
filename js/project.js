@@ -2,6 +2,20 @@
 import { state } from "./state.js";
 import { escapeCss, jsonNameForSvg, normalizeTransform, nowIso } from "./utils.js";
 
+export const DEFAULT_EXPORT_SETTINGS = {
+  width: 512,
+  height: 512,
+  type: "apng"
+};
+
+export function normalizeExportSettings(settings = {}) {
+  const type = settings.type === "spritesheet" ? "spritesheet" : "apng";
+  const width = Math.max(1, Math.round(Number(settings.width || DEFAULT_EXPORT_SETTINGS.width)));
+  const height = Math.max(1, Math.round(Number(settings.height || DEFAULT_EXPORT_SETTINGS.height)));
+
+  return { width, height, type };
+}
+
 export function createEmptyProject(svgName, svgPath = svgName) {
   return {
     version: 1,
@@ -10,6 +24,7 @@ export function createEmptyProject(svgName, svgPath = svgName) {
     svgPath,
     fps: 24,
     durationFrames: 120,
+    export: normalizeExportSettings(),
     createdAt: nowIso(),
     updatedAt: nowIso(),
     layers: [],
@@ -28,6 +43,7 @@ export function normalizeProject(project, svgName, svgPath) {
   project.svgPath = project.svgPath || svgPath || svgName;
   project.fps = Number(project.fps || 24);
   project.durationFrames = Number(project.durationFrames || 120);
+  project.export = normalizeExportSettings(project.export);
   project.createdAt = project.createdAt || nowIso();
   project.updatedAt = project.updatedAt || nowIso();
   project.layers = Array.isArray(project.layers) ? project.layers : [];

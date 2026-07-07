@@ -15,6 +15,11 @@ registerActions({
 });
 
 function handleKeyboard(event) {
+  if (event.key === "Escape" && !dom.propertiesDialog.hidden) {
+    ui.closeProperties();
+    return;
+  }
+
   if (event.target && ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
 
   if (event.code === "Space") {
@@ -41,6 +46,7 @@ function bindEvents() {
   dom.jsonFileInput.addEventListener("change", e => files.openManualJson(e.target.files[0]));
   dom.saveBtn.addEventListener("click", project.saveProject);
   dom.downloadBtn.addEventListener("click", project.downloadProject);
+  dom.propertiesBtn.addEventListener("click", ui.openProperties);
   dom.playBtn.addEventListener("click", timeline.play);
   dom.pauseBtn.addEventListener("click", timeline.stopPlayback);
   dom.fileFilter.addEventListener("input", ui.renderFileList);
@@ -56,6 +62,15 @@ function bindEvents() {
 
   dom.fpsInput.addEventListener("input", timeline.onTimelineSettingsChange);
   dom.durationInput.addEventListener("input", timeline.onTimelineSettingsChange);
+  dom.closePropertiesBtn.addEventListener("click", ui.closeProperties);
+  dom.cancelPropertiesBtn.addEventListener("click", ui.closeProperties);
+  dom.applyPropertiesBtn.addEventListener("click", ui.applyProperties);
+  dom.exportTypeSelect.addEventListener("change", ui.updateExportTypeNote);
+  dom.exportWidthInput.addEventListener("input", ui.updateExportTypeNote);
+  dom.exportHeightInput.addEventListener("input", ui.updateExportTypeNote);
+  dom.propertiesDialog.addEventListener("click", event => {
+    if (event.target === dom.propertiesDialog) ui.closeProperties();
+  });
   dom.frameInput.addEventListener("input", () => timeline.setFrame(dom.frameInput.value));
   dom.frameSlider.addEventListener("input", () => timeline.setFrame(dom.frameSlider.value));
   dom.goStartBtn.addEventListener("click", () => timeline.setFrame(0));
