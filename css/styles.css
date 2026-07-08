@@ -377,6 +377,15 @@
       vector-effect: non-scaling-stroke;
     }
 
+    #svgHost svg .pivot-indicator {
+      pointer-events: none;
+      fill: rgba(251, 191, 36, .18);
+      stroke: var(--warn);
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+      filter: drop-shadow(0 0 4px rgba(251, 191, 36, .8));
+    }
+
     #svgHost.pivot-mode {
       cursor: crosshair;
     }

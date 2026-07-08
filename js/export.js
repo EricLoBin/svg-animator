@@ -100,6 +100,7 @@ function serializeCurrentSvgFrame() {
   clone.querySelectorAll(".anim-hover, .anim-selected").forEach(el => {
     el.classList.remove("anim-hover", "anim-selected");
   });
+  clone.querySelectorAll("[data-anim-ui]").forEach(el => el.remove());
 
   return new XMLSerializer().serializeToString(clone);
 }

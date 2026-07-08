@@ -137,6 +137,7 @@ export function renderFrame(frame) {
 
   updateFrameUi();
   actions.updateInspector();
+  actions.updatePivotIndicator();
   renderTimeline();
 }
 

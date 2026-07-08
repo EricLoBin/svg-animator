@@ -221,6 +221,7 @@ export function selectElement(id) {
   actions.updateInspector();
   actions.renderLayerList();
   actions.renderTimeline();
+  updatePivotIndicator();
 }
 
 export function defaultTransformForElement(id) {
@@ -257,6 +258,8 @@ export function onSvgClick(event) {
     applyTransformToElement(state.selectedElementId, t);
     state.pickingPivot = false;
     dom.svgHost.classList.remove("pivot-mode");
+    dom.pickPivotBtn.textContent = "Pick Pivot";
+    updatePivotIndicator();
     actions.updateInspector();
     actions.markDirty(true);
     actions.toast("Pivot set at clicked point.");
@@ -310,6 +313,7 @@ export function onSvgPointerMove(event) {
 
   state.currentTransforms[state.dragging.id] = t;
   applyTransformToElement(state.dragging.id, t);
+  updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);
 }
@@ -344,6 +348,7 @@ export function onInspectorInput() {
   const t = readInspectorTransform();
   state.currentTransforms[state.selectedElementId] = t;
   applyTransformToElement(state.selectedElementId, t);
+  updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);
 }
@@ -377,6 +382,7 @@ export function centerPivot() {
   t.pivotY = bbox.y + bbox.height / 2;
   state.currentTransforms[state.selectedElementId] = t;
   applyTransformToElement(state.selectedElementId, t);
+  updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);
 }
@@ -394,6 +400,55 @@ export function resetSelectedTransform() {
   const t = defaultTransformForElement(state.selectedElementId);
   state.currentTransforms[state.selectedElementId] = t;
   applyTransformToElement(state.selectedElementId, t);
+  updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);
+}
+
+export function updatePivotIndicator() {
+  const group = ensurePivotIndicator();
+  const selected = state.selectedElementId;
+  const hasSelection = Boolean(selected && getSvgElement(selected));
+
+  if (!group || !hasSelection) {
+    if (group) group.setAttribute("display", "none");
+    return;
+  }
+
+  const transform = normalizeTransform(state.currentTransforms[selected] || defaultTransformForElement(selected));
+  group.setAttribute("display", "inline");
+  group.setAttribute("transform", `translate(${transform.pivotX} ${transform.pivotY})`);
+}
+
+export function ensurePivotIndicator() {
+  if (!state.svgRoot) return null;
+
+  let group = state.svgRoot.querySelector("[data-anim-ui='pivot-indicator']");
+  if (group) return group;
+
+  const ns = "http://www.w3.org/2000/svg";
+  group = document.createElementNS(ns, "g");
+  group.setAttribute("data-anim-ui", "pivot-indicator");
+  group.setAttribute("class", "pivot-indicator");
+  group.setAttribute("display", "none");
+
+  const ring = document.createElementNS(ns, "circle");
+  ring.setAttribute("r", "7");
+
+  const horizontal = document.createElementNS(ns, "line");
+  horizontal.setAttribute("x1", "-11");
+  horizontal.setAttribute("x2", "11");
+  horizontal.setAttribute("y1", "0");
+  horizontal.setAttribute("y2", "0");
+
+  const vertical = document.createElementNS(ns, "line");
+  vertical.setAttribute("x1", "0");
+  vertical.setAttribute("x2", "0");
+  vertical.setAttribute("y1", "-11");
+  vertical.setAttribute("y2", "11");
+
+  group.append(ring, horizontal, vertical);
+  state.svgRoot.appendChild(group);
+
+  return group;
 }

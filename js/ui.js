@@ -108,6 +108,7 @@ export function updateInspector() {
   dom.nextKeyBtn.disabled = !has;
 
   if (!has) {
+    actions.updatePivotIndicator();
     dom.selectionSummary.innerHTML = `Select a layer or click an SVG element.`;
     return;
   }
@@ -128,6 +129,7 @@ export function updateInspector() {
   setInputValue(dom.pivotYInput, t.pivotY);
 
   dom.addKeyBtn.textContent = actions.hasKeyframeAtCurrentFrame() ? "Update Keyframe" : "Add Keyframe";
+  actions.updatePivotIndicator();
 }
 
 export function setInputValue(input, value) {
