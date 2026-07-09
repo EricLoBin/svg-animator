@@ -96,7 +96,7 @@ export function renderLayerList() {
 export function updateInspector() {
   const selected = state.selectedElementId;
   const has = Boolean(selected && actions.getSvgElement(selected));
-  const inputs = [dom.xInput, dom.yInput, dom.rotationInput, dom.scaleInput, dom.pivotXInput, dom.pivotYInput];
+  const inputs = [dom.xInput, dom.yInput, dom.rotationInput, dom.scaleInput, dom.opacityInput, dom.pivotXInput, dom.pivotYInput];
 
   for (const input of inputs) input.disabled = !has;
   dom.centerPivotBtn.disabled = !has;
@@ -125,6 +125,7 @@ export function updateInspector() {
   setInputValue(dom.yInput, t.y);
   setInputValue(dom.rotationInput, t.rotation);
   setInputValue(dom.scaleInput, t.scale);
+  setInputValue(dom.opacityInput, t.opacity * 100);
   setInputValue(dom.pivotXInput, t.pivotX);
   setInputValue(dom.pivotYInput, t.pivotY);
 

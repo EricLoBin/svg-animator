@@ -455,7 +455,10 @@
     .timeline-heading {
       font-size: 13px;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .timeline-center {
@@ -532,13 +535,6 @@
       font-size: 10px;
       transform: translateX(-50%);
       user-select: none;
-    }
-
-    .small-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      align-items: end;
     }
 
     .kbd {

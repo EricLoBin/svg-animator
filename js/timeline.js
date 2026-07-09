@@ -30,7 +30,8 @@ export function addOrUpdateKeyframe() {
       x: t.x,
       y: t.y,
       rotation: t.rotation,
-      scale: t.scale
+      scale: t.scale,
+      opacity: t.opacity
     },
     pivot: {
       x: t.pivotX,
@@ -81,12 +82,15 @@ export function lerp(a, b, t) {
 export function interpolate(k1, k2, frame) {
   const span = k2.frame - k1.frame;
   const pct = span === 0 ? 0 : (frame - k1.frame) / span;
+  const opacity1 = Number.isFinite(Number(k1.transform.opacity)) ? Number(k1.transform.opacity) : 1;
+  const opacity2 = Number.isFinite(Number(k2.transform.opacity)) ? Number(k2.transform.opacity) : opacity1;
 
   return {
     x: lerp(k1.transform.x, k2.transform.x, pct),
     y: lerp(k1.transform.y, k2.transform.y, pct),
     rotation: lerp(k1.transform.rotation, k2.transform.rotation, pct),
     scale: lerp(k1.transform.scale, k2.transform.scale, pct),
+    opacity: lerp(opacity1, opacity2, pct),
     pivotX: lerp(k1.pivot.x, k2.pivot.x, pct),
     pivotY: lerp(k1.pivot.y, k2.pivot.y, pct)
   };
@@ -98,6 +102,7 @@ export function transformFromKeyframe(k) {
     y: k.transform.y,
     rotation: k.transform.rotation,
     scale: k.transform.scale,
+    opacity: k.transform.opacity,
     pivotX: k.pivot.x,
     pivotY: k.pivot.y
   });
@@ -149,11 +154,11 @@ export function clampFrame(frame) {
 }
 
 export function getFps() {
-  return Math.max(1, Math.round(Number(state.activeProject?.fps || dom.fpsInput.value || 24)));
+  return Math.max(1, Math.round(Number(state.activeProject?.fps || 24)));
 }
 
 export function getDurationFrames() {
-  return Math.max(1, Math.round(Number(state.activeProject?.durationFrames || dom.durationInput.value || 120)));
+  return Math.max(1, Math.round(Number(state.activeProject?.durationFrames || 120)));
 }
 
 export function setFrame(frame) {
@@ -236,7 +241,7 @@ export function renderKeyframeList() {
     row.className = "row" + (key.frame === state.currentFrame ? " active" : "");
     row.innerHTML = `
       <div class="title">Frame ${key.frame}</div>
-      <div class="sub">x ${roundForInput(key.transform.x)}, y ${roundForInput(key.transform.y)}, rot ${roundForInput(key.transform.rotation)}°</div>
+      <div class="sub">x ${roundForInput(key.transform.x)}, y ${roundForInput(key.transform.y)}, rot ${roundForInput(key.transform.rotation)}°, op ${roundForInput(key.transform.opacity * 100)}%</div>
     `;
     row.addEventListener("click", () => setFrame(key.frame));
     dom.keyframeList.appendChild(row);
@@ -264,23 +269,9 @@ export function gotoAdjacentKey(direction) {
 
 export function applyProjectSettingsToUi() {
   if (!state.activeProject) return;
-  dom.fpsInput.value = String(state.activeProject.fps);
-  dom.durationInput.value = String(state.activeProject.durationFrames);
   dom.frameSlider.max = String(state.activeProject.durationFrames - 1);
   dom.frameInput.max = String(state.activeProject.durationFrames - 1);
   actions.syncPropertiesFormFromProject();
-}
-
-export function onTimelineSettingsChange() {
-  if (!state.activeProject) return;
-
-  state.activeProject.fps = Math.max(1, Math.round(Number(dom.fpsInput.value || 24)));
-  state.activeProject.durationFrames = Math.max(1, Math.round(Number(dom.durationInput.value || 120)));
-  state.currentFrame = clampFrame(state.currentFrame);
-
-  actions.syncPropertiesFormFromProject();
-  actions.markDirty(true);
-  renderFrame(state.currentFrame);
 }
 
 export function play() {

@@ -1,6 +1,6 @@
 ﻿import { actions } from "./context.js";
 import { dom, EDITABLE_SELECTOR, state } from "./state.js";
-import { clone, escapeCss, normalizeTransform, parseSvgLength, safeElementId } from "./utils.js";
+import { clone, escapeCss, normalizeOpacity, normalizeTransform, parseSvgLength, safeElementId } from "./utils.js";
 
 export function sanitizeSvgDocument(doc) {
   doc.querySelectorAll("script, foreignObject").forEach(el => el.remove());
@@ -144,6 +144,9 @@ export function extractLayers() {
     if (!el.hasAttribute("data-base-transform")) {
       el.setAttribute("data-base-transform", el.getAttribute("transform") || "");
     }
+    if (!el.hasAttribute("data-base-opacity")) {
+      el.setAttribute("data-base-opacity", String(readElementOpacity(el)));
+    }
 
     const depth = getDepth(el, state.svgRoot);
     const title = el.getAttribute("inkscape:label") || el.getAttribute("aria-label") || el.id || el.tagName.toLowerCase();
@@ -231,9 +234,26 @@ export function defaultTransformForElement(id) {
     y: 0,
     rotation: 0,
     scale: 1,
+    opacity: readElementOpacity(id),
     pivotX: bbox ? bbox.x + bbox.width / 2 : 0,
     pivotY: bbox ? bbox.y + bbox.height / 2 : 0
   };
+}
+
+export function readElementOpacity(idOrElement) {
+  const el = typeof idOrElement === "string" ? getSvgElement(idOrElement) : idOrElement;
+  if (!el) return 1;
+
+  const base = el.getAttribute("data-base-opacity");
+  if (base != null) return normalizeOpacity(base);
+
+  const inline = el.style?.opacity;
+  if (inline) return normalizeOpacity(inline);
+
+  const attr = el.getAttribute("opacity");
+  if (attr != null) return normalizeOpacity(attr);
+
+  return 1;
 }
 
 export function getElementBBox(id) {
@@ -338,6 +358,7 @@ export function readInspectorTransform() {
     y: parseFloat(dom.yInput.value),
     rotation: parseFloat(dom.rotationInput.value),
     scale: parseFloat(dom.scaleInput.value),
+    opacity: parseFloat(dom.opacityInput.value) / 100,
     pivotX: parseFloat(dom.pivotXInput.value),
     pivotY: parseFloat(dom.pivotYInput.value)
   });
@@ -367,6 +388,7 @@ export function applyTransformToElement(id, transform) {
   ].join(" ");
 
   el.setAttribute("transform", [base, generated].filter(Boolean).join(" "));
+  el.style.opacity = String(t.opacity);
 }
 
 export function centerPivot() {

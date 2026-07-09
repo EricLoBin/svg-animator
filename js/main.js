@@ -56,7 +56,7 @@ function bindEvents() {
   dom.filesTabBtn.addEventListener("click", () => ui.switchLeftTab("files"));
   dom.layersTabBtn.addEventListener("click", () => ui.switchLeftTab("layers"));
 
-  [dom.xInput, dom.yInput, dom.rotationInput, dom.scaleInput, dom.pivotXInput, dom.pivotYInput]
+  [dom.xInput, dom.yInput, dom.rotationInput, dom.scaleInput, dom.opacityInput, dom.pivotXInput, dom.pivotYInput]
     .forEach(input => input.addEventListener("input", svg.onInspectorInput));
 
   dom.centerPivotBtn.addEventListener("click", svg.centerPivot);
@@ -65,8 +65,6 @@ function bindEvents() {
   dom.addKeyBtn.addEventListener("click", timeline.addOrUpdateKeyframe);
   dom.deleteKeyBtn.addEventListener("click", timeline.deleteKeyframe);
 
-  dom.fpsInput.addEventListener("input", timeline.onTimelineSettingsChange);
-  dom.durationInput.addEventListener("input", timeline.onTimelineSettingsChange);
   dom.closePropertiesBtn.addEventListener("click", ui.closeProperties);
   dom.cancelPropertiesBtn.addEventListener("click", ui.closeProperties);
   dom.applyPropertiesBtn.addEventListener("click", ui.applyProperties);

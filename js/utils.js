@@ -19,7 +19,13 @@ export function clone(obj) {
 }
 
 export function identityTransform() {
-  return { x: 0, y: 0, rotation: 0, scale: 1, pivotX: 0, pivotY: 0 };
+  return { x: 0, y: 0, rotation: 0, scale: 1, pivotX: 0, pivotY: 0, opacity: 1 };
+}
+
+export function normalizeOpacity(value, fallback = 1) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(1, n));
 }
 
 export function normalizeTransform(t = {}) {
@@ -29,7 +35,8 @@ export function normalizeTransform(t = {}) {
     rotation: Number(t.rotation ?? 0),
     scale: Number(t.scale ?? t.scaleX ?? 1),
     pivotX: Number(t.pivotX ?? (t.pivot && t.pivot.x) ?? 0),
-    pivotY: Number(t.pivotY ?? (t.pivot && t.pivot.y) ?? 0)
+    pivotY: Number(t.pivotY ?? (t.pivot && t.pivot.y) ?? 0),
+    opacity: normalizeOpacity(t.opacity ?? 1)
   };
 }
 

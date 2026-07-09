@@ -66,7 +66,8 @@ export function normalizeProject(project, svgName, svgPath) {
           x: merged.x,
           y: merged.y,
           rotation: merged.rotation,
-          scale: merged.scale
+          scale: merged.scale,
+          opacity: merged.opacity
         },
         pivot: {
           x: merged.pivotX,
