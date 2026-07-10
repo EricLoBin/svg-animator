@@ -54,6 +54,7 @@ export const dom = {
   centerPivotBtn: document.getElementById("centerPivotBtn"),
   pickPivotBtn: document.getElementById("pickPivotBtn"),
   resetTransformBtn: document.getElementById("resetTransformBtn"),
+  maskToLayerSelect: document.getElementById("maskToLayerSelect"),
   addKeyBtn: document.getElementById("addKeyBtn"),
   deleteKeyBtn: document.getElementById("deleteKeyBtn"),
   frameInput: document.getElementById("frameInput"),

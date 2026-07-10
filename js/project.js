@@ -53,6 +53,9 @@ export function normalizeProject(project, svgName, svgPath) {
     anim.id = anim.id || id;
     anim.name = anim.name || id;
     anim.selector = anim.selector || `#${escapeCss(id)}`;
+    if (typeof anim.maskTo !== "string" || !anim.maskTo || anim.maskTo === id) {
+      delete anim.maskTo;
+    }
     anim.keyframes = Array.isArray(anim.keyframes) ? anim.keyframes : [];
     anim.keyframes = anim.keyframes.map(k => {
       const merged = normalizeTransform({

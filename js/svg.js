@@ -147,6 +147,12 @@ export function extractLayers() {
     if (!el.hasAttribute("data-base-opacity")) {
       el.setAttribute("data-base-opacity", String(readElementOpacity(el)));
     }
+    if (!el.hasAttribute("data-base-clip-path")) {
+      el.setAttribute("data-base-clip-path", el.getAttribute("clip-path") || "");
+    }
+    if (!el.hasAttribute("data-base-style-clip-path")) {
+      el.setAttribute("data-base-style-clip-path", el.style?.clipPath || "");
+    }
 
     const depth = getDepth(el, state.svgRoot);
     const title = el.getAttribute("inkscape:label") || el.getAttribute("aria-label") || el.id || el.tagName.toLowerCase();
@@ -190,6 +196,10 @@ export function syncLayerCatalogToProject() {
     if (!state.activeProject.elements[layer.id]) continue;
     state.activeProject.elements[layer.id].name = state.activeProject.elements[layer.id].name || layer.name;
     state.activeProject.elements[layer.id].selector = layer.selector;
+    const maskTo = state.activeProject.elements[layer.id].maskTo;
+    if (maskTo && (maskTo === layer.id || !state.layers.some(candidate => candidate.id === maskTo))) {
+      delete state.activeProject.elements[layer.id].maskTo;
+    }
   }
 }
 
@@ -276,6 +286,7 @@ export function onSvgClick(event) {
     t.pivotY = point.y;
     state.currentTransforms[state.selectedElementId] = t;
     applyTransformToElement(state.selectedElementId, t);
+    applyLayerMasks();
     state.pickingPivot = false;
     dom.svgHost.classList.remove("pivot-mode");
     dom.pickPivotBtn.textContent = "Pick Pivot";
@@ -333,6 +344,7 @@ export function onSvgPointerMove(event) {
 
   state.currentTransforms[state.dragging.id] = t;
   applyTransformToElement(state.dragging.id, t);
+  applyLayerMasks();
   updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);
@@ -369,6 +381,7 @@ export function onInspectorInput() {
   const t = readInspectorTransform();
   state.currentTransforms[state.selectedElementId] = t;
   applyTransformToElement(state.selectedElementId, t);
+  applyLayerMasks();
   updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);
@@ -391,6 +404,107 @@ export function applyTransformToElement(id, transform) {
   el.style.opacity = String(t.opacity);
 }
 
+export function onMaskToLayerChange() {
+  if (!state.selectedElementId || !state.activeProject) return;
+
+  const targetId = dom.maskToLayerSelect.value;
+  const isValidTarget = targetId && targetId !== state.selectedElementId && state.layers.some(layer => layer.id === targetId);
+  const anim = actions.ensureElementAnimation(state.selectedElementId);
+
+  if (isValidTarget) {
+    anim.maskTo = targetId;
+  } else {
+    delete anim.maskTo;
+  }
+
+  applyLayerMasks();
+  actions.markDirty(true);
+  actions.updateInspector();
+}
+
+export function applyLayerMasks() {
+  if (!state.svgRoot || !state.activeProject) return;
+
+  clearGeneratedLayerMasks();
+
+  for (const layer of state.layers) {
+    const el = getSvgElement(layer.id);
+    if (el) restoreBaseClipPath(el);
+  }
+
+  const masks = [];
+  for (const layer of state.layers) {
+    const maskTo = state.activeProject.elements[layer.id]?.maskTo;
+    if (!maskTo || maskTo === layer.id) continue;
+
+    const el = getSvgElement(layer.id);
+    const maskSource = getSvgElement(maskTo);
+    if (!el || !maskSource) continue;
+
+    const clippedTransform = normalizeTransform(state.currentTransforms[layer.id] || defaultTransformForElement(layer.id));
+    masks.push({ layerId: layer.id, el, maskSource, clippedTransform });
+  }
+
+  if (!masks.length) return;
+
+  const defs = ensureLayerMaskDefs();
+
+  for (const mask of masks) {
+    const clipId = `anim-mask-${safeElementId(mask.layerId, "layer")}-to-${safeElementId(mask.maskSource.getAttribute("data-anim-id") || mask.maskSource.id, "mask")}`;
+    const clipPath = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+    const maskClone = mask.maskSource.cloneNode(true);
+
+    clipPath.setAttribute("id", clipId);
+    clipPath.setAttribute("clipPathUnits", "userSpaceOnUse");
+    clipPath.setAttribute("transform", `translate(${-mask.clippedTransform.x} ${-mask.clippedTransform.y}) rotate(${-mask.clippedTransform.rotation} ${mask.clippedTransform.pivotX} ${mask.clippedTransform.pivotY})`);
+    sanitizeMaskClone(maskClone);
+    clipPath.appendChild(maskClone);
+    defs.appendChild(clipPath);
+
+    mask.el.setAttribute("clip-path", `url(#${clipId})`);
+    mask.el.style.clipPath = `url(#${clipId})`;
+  }
+}
+
+export function clearGeneratedLayerMasks() {
+  if (!state.svgRoot) return;
+  state.svgRoot.querySelectorAll("defs[data-anim-mask-root='true']").forEach(el => el.remove());
+}
+
+export function ensureLayerMaskDefs() {
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  defs.setAttribute("data-anim-mask-root", "true");
+  state.svgRoot.appendChild(defs);
+  return defs;
+}
+
+export function sanitizeMaskClone(root) {
+  const elements = [root, ...root.querySelectorAll("*")];
+
+  for (const el of elements) {
+    el.removeAttribute("id");
+    el.removeAttribute("data-anim-id");
+    el.removeAttribute("data-anim-editable");
+    el.removeAttribute("data-base-transform");
+    el.removeAttribute("data-base-opacity");
+    el.removeAttribute("data-base-clip-path");
+    el.removeAttribute("data-base-style-clip-path");
+    el.removeAttribute("clip-path");
+    el.classList.remove("anim-hover", "anim-selected");
+    if (el.style) el.style.clipPath = "";
+  }
+}
+
+export function restoreBaseClipPath(el) {
+  const baseAttr = el.getAttribute("data-base-clip-path") || "";
+  const baseStyle = el.getAttribute("data-base-style-clip-path") || "";
+
+  if (baseAttr) el.setAttribute("clip-path", baseAttr);
+  else el.removeAttribute("clip-path");
+
+  if (el.style) el.style.clipPath = baseStyle;
+}
+
 export function centerPivot() {
   if (!state.selectedElementId) return;
   const bbox = getElementBBox(state.selectedElementId);
@@ -404,6 +518,7 @@ export function centerPivot() {
   t.pivotY = bbox.y + bbox.height / 2;
   state.currentTransforms[state.selectedElementId] = t;
   applyTransformToElement(state.selectedElementId, t);
+  applyLayerMasks();
   updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);
@@ -420,8 +535,15 @@ export function togglePickPivot() {
 export function resetSelectedTransform() {
   if (!state.selectedElementId) return;
   const t = defaultTransformForElement(state.selectedElementId);
+  const anim = state.activeProject?.elements[state.selectedElementId];
+
+  if (anim) {
+    delete anim.maskTo;
+  }
+
   state.currentTransforms[state.selectedElementId] = t;
   applyTransformToElement(state.selectedElementId, t);
+  applyLayerMasks();
   updatePivotIndicator();
   actions.updateInspector();
   actions.markDirty(true);

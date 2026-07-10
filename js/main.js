@@ -62,6 +62,7 @@ function bindEvents() {
   dom.centerPivotBtn.addEventListener("click", svg.centerPivot);
   dom.pickPivotBtn.addEventListener("click", svg.togglePickPivot);
   dom.resetTransformBtn.addEventListener("click", svg.resetSelectedTransform);
+  dom.maskToLayerSelect.addEventListener("change", svg.onMaskToLayerChange);
   dom.addKeyBtn.addEventListener("click", timeline.addOrUpdateKeyframe);
   dom.deleteKeyBtn.addEventListener("click", timeline.deleteKeyframe);
 

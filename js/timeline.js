@@ -140,6 +140,7 @@ export function renderFrame(frame) {
     actions.applyTransformToElement(layer.id, t);
   }
 
+  actions.applyLayerMasks();
   updateFrameUi();
   actions.updateInspector();
   actions.updatePivotIndicator();

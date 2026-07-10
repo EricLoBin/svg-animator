@@ -102,6 +102,7 @@ export function updateInspector() {
   dom.centerPivotBtn.disabled = !has;
   dom.pickPivotBtn.disabled = !has;
   dom.resetTransformBtn.disabled = !has;
+  dom.maskToLayerSelect.disabled = !has;
   dom.addKeyBtn.disabled = !has;
   dom.deleteKeyBtn.disabled = !has || !actions.hasKeyframeAtCurrentFrame();
   dom.prevKeyBtn.disabled = !has;
@@ -109,12 +110,14 @@ export function updateInspector() {
 
   if (!has) {
     actions.updatePivotIndicator();
+    renderMaskToLayerSelect(null, "");
     dom.selectionSummary.innerHTML = `Select a layer or click an SVG element.`;
     return;
   }
 
   const layer = state.layers.find(l => l.id === selected);
   const t = state.currentTransforms[selected] || actions.defaultTransformForElement(selected);
+  const anim = state.activeProject?.elements[selected];
 
   dom.selectionSummary.innerHTML = `
     <div class="selected-name">${escapeHtml(layer?.name || selected)}</div>
@@ -128,9 +131,25 @@ export function updateInspector() {
   setInputValue(dom.opacityInput, t.opacity * 100);
   setInputValue(dom.pivotXInput, t.pivotX);
   setInputValue(dom.pivotYInput, t.pivotY);
+  renderMaskToLayerSelect(selected, anim?.maskTo || "");
 
   dom.addKeyBtn.textContent = actions.hasKeyframeAtCurrentFrame() ? "Update Keyframe" : "Add Keyframe";
   actions.updatePivotIndicator();
+}
+
+export function renderMaskToLayerSelect(selectedId, maskTo) {
+  const select = dom.maskToLayerSelect;
+  const activeValue = selectedId && maskTo !== selectedId ? maskTo : "";
+
+  select.innerHTML = "";
+  select.appendChild(new Option("None", ""));
+
+  for (const layer of state.layers) {
+    if (layer.id === selectedId) continue;
+    select.appendChild(new Option(layer.name, layer.id));
+  }
+
+  select.value = state.layers.some(layer => layer.id === activeValue && layer.id !== selectedId) ? activeValue : "";
 }
 
 export function setInputValue(input, value) {

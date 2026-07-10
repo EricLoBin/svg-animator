@@ -80,7 +80,12 @@
           <span id="dirtyBadge" class="badge">clean</span>
         </div>
         <div class="panel-body">
-          <div id="selectionSummary" class="hint">Select a layer or click an SVG element.</div>
+          <div class="selection-summary-wrap">
+            <div id="selectionSummary" class="hint">Select a layer or click an SVG element.</div>
+            <div class="selection-actions">
+              <button id="resetTransformBtn" disabled>Reset</button>
+            </div>
+          </div>
 
           <div class="section">
             <div class="inspector-grid">
@@ -125,9 +130,10 @@
           </div>
 
           <div class="section">
-            <div class="button-row">
-              <button id="resetTransformBtn" disabled>Reset Layer</button>
-            </div>
+            <label for="maskToLayerSelect">Mask To Layer</label>
+            <select id="maskToLayerSelect" disabled>
+              <option value="">None</option>
+            </select>
           </div>
 
         </div>

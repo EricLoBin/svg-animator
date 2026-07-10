@@ -408,6 +408,20 @@
       grid-column: 1 / -1;
     }
 
+    .selection-summary-wrap {
+      display: grid;
+      grid-auto-flow: column;
+      grid-template-columns: 1fr auto;
+      gap: 9px;
+      align-items: start;
+      justify-items: start;
+    }
+
+    .selection-actions {
+      display: flex;
+      justify-content: flex-start;
+    }
+
     .button-row {
       display: flex;
       gap: 7px;
