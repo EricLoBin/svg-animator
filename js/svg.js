@@ -104,7 +104,8 @@ export function loadSvgIntoPreview(svgText) {
   dom.svgHost.appendChild(imported);
   state.svgRoot = imported;
 
-  state.svgRoot.addEventListener("click", onSvgClick);
+  dom.svgHost.removeEventListener("click", onSvgClick);
+  dom.svgHost.addEventListener("click", onSvgClick);
   state.svgRoot.addEventListener("pointerdown", onSvgPointerDown);
   window.addEventListener("pointermove", onSvgPointerMove);
   window.addEventListener("pointerup", onSvgPointerUp);
@@ -237,6 +238,21 @@ export function selectElement(id) {
   updatePivotIndicator();
 }
 
+export function deselectElement() {
+  if (!state.selectedElementId) return;
+
+  clearSelectedClass();
+  state.selectedElementId = null;
+  state.pickingPivot = false;
+  dom.svgHost.classList.remove("pivot-mode");
+  dom.pickPivotBtn.textContent = "Pick Pivot";
+
+  actions.updateInspector();
+  actions.renderLayerList();
+  actions.renderTimeline();
+  updatePivotIndicator();
+}
+
 export function defaultTransformForElement(id) {
   const bbox = getElementBBox(id);
   return {
@@ -277,7 +293,7 @@ export function getElementBBox(id) {
 }
 
 export function onSvgClick(event) {
-  if (!state.svgRoot) return;
+  if (!state.svgRoot || !dom.svgHost.contains(event.target)) return;
 
   if (state.pickingPivot && state.selectedElementId) {
     const point = screenToSvg(event.clientX, event.clientY);
@@ -302,7 +318,10 @@ export function onSvgClick(event) {
   const target = event.target.closest?.("[data-anim-editable='true']");
   if (target && state.svgRoot.contains(target)) {
     selectElement(target.getAttribute("data-anim-id") || target.id);
+    return;
   }
+
+  deselectElement();
 }
 
 export function onSvgPointerDown(event) {
